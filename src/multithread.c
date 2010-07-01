@@ -80,7 +80,10 @@ static void *pull_one_url(void *proxy)
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) &chunk);
 
     if (proxy)
-        curl_easy_setopt(curl, CURLOPT_PROXY, proxy);
+    {
+        /* curl_easy_setopt(curl, CURLOPT_PROXY, proxy); */
+        /* curl_easy_setopt(easyhandle, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS4);  */
+    }
 
     curl_easy_perform(curl); /* ignores error */
     curl_easy_cleanup(curl);
@@ -101,17 +104,43 @@ static void *pull_one_url(void *proxy)
 }
 
 
-/*
-   int pthread_create(pthread_t *new_thread_ID,
-   const pthread_attr_t *attr,
-   void * (*start_func)(void *), void *arg);
-*/
+char * getnextproxy (const char * buffer, char * prev_proxy)
+{
+    char * foo = NULL;
+    char * bar = NULL;
+    char * ret = NULL;
+    int c = 0;
+
+    if (prev_proxy)
+    {
+        foo = strstr(buffer, prev_proxy);
+        foo = &foo[strlen(prev_proxy) + 1];
+    }
+    else
+        foo = buffer;
+
+    if (bar = strchr (foo, '\n'))
+    {
+        c = strlen(foo) - strlen(bar);
+        ret = malloc (sizeof(char) * (c + 1));
+        strncpy (ret, foo, c);
+
+        printf ("ret: %s\n", ret);
+        return ret;
+    }
+    else
+        return NULL;
+
+
+}
 
 int main(int argc, char **argv)
 {
     pthread_t tid[MAXTHREADS];
     int i;
     int error;
+    char * buf = NULL;
+    int bufsize = 0;
     char * proxy = NULL;
     FILE * in = NULL;
 
@@ -128,11 +157,21 @@ int main(int argc, char **argv)
 
     if (in = fopen (INPUTFILE, "r"))
     {
+        fseek(in, 0, SEEK_END);
+        bufsize = ftell(in) + 1;
+        buf = malloc (sizeof(char) * bufsize);
+        fseek(in, 0, SEEK_SET);
+
+        buf[fread(buf, 1, bufsize, in)] = '\0';
+        fclose (in);
+
         /* Must initialize libcurl before any threads are started */
         curl_global_init(CURL_GLOBAL_ALL);
 
         for(i=0; i< MAXTHREADS; i++) 
         {
+            proxy = getnextproxy(buf, proxy);
+
             error = pthread_create(&tid[i],
                     NULL, /* default attributes please */
                     pull_one_url,
