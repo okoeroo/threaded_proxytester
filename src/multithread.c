@@ -134,7 +134,6 @@ char * getnextproxy (const char * buffer, char * prev_proxy)
         ret = malloc (sizeof(char) * (c + 1));
         strncpy (ret, foo, c);
 
-        printf ("ret: %s\n", ret);
         return ret;
     }
     else
@@ -145,13 +144,14 @@ char * getnextproxy (const char * buffer, char * prev_proxy)
 
 int main(int argc, char **argv)
 {
-    pthread_t tid[MAXTHREADS];
-    int i;
+    pthread_t tid[MAXTHREADS*100];
+    int i = 0;
     int error;
     char * buf = NULL;
     int bufsize = 0;
     char * proxy = NULL;
     FILE * in = NULL;
+    int active_threads = 0;
 
 
     printf ("Settings:\n");
@@ -177,10 +177,9 @@ int main(int argc, char **argv)
         /* Must initialize libcurl before any threads are started */
         curl_global_init(CURL_GLOBAL_ALL);
 
-        for(i=0; i< MAXTHREADS; i++) 
+        /* ugly haxx */
+        while (proxy = getnextproxy(buf, proxy))
         {
-            proxy = getnextproxy(buf, proxy);
-
             error = pthread_create(&tid[i],
                     NULL, /* default attributes please */
                     pull_one_url,
@@ -188,14 +187,24 @@ int main(int argc, char **argv)
             if(0 != error)
                 fprintf(stderr, "Couldn't run thread number %d, errno %d\n", i, error);
             else
+            {
                 fprintf(stderr, "Thread %d, gets via %s\n", i, proxy);
-        }
+                active_threads++;
+                i++;
+            }
 
-        /* now wait for all threads to terminate */
-        for(i=0; i< MAXTHREADS; i++) 
-        {
-            error = pthread_join(tid[i], NULL);
-            fprintf(stderr, "Thread %d terminated\n", i);
+            if (active_threads < MAXTHREADS)
+                continue;
+            else
+            {
+                active_threads = 0;
+                /* now wait for all threads to terminate */
+                for(i=0; i< MAXTHREADS; i++) 
+                {
+                    error = pthread_join(tid[i], NULL);
+                    fprintf(stderr, "Thread %d terminated\n", i);
+                }
+            }
         }
     }
 
