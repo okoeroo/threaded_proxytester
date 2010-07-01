@@ -13,11 +13,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <pthread.h>
 #include <curl/curl.h>
 
 #define MAXTHREADS 20
 
+#define TIMEOUT   5
 #define INPUTFILE "/Users/okoeroo/dvl/scripts/hacking/gaming_games/working.proxies"
 #define OUTPUTFILE "my_tested_proxies.txt"
 #define TESTURL "http://www.nikhef.nl/~okoeroo/testfile"
@@ -69,6 +71,11 @@ static void *pull_one_url(void *proxy)
     CURL *curl;
     buffer_t chunk;
     FILE * f = NULL;
+    sigset_t sigset;
+
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
     chunk.data = NULL; /* we expect realloc(NULL, size) to work */ 
     chunk.size = 0;    /* no data at this point */ 
@@ -78,10 +85,12 @@ static void *pull_one_url(void *proxy)
     curl_easy_setopt(curl, CURLOPT_USERAGENT, USERAGENT);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) &chunk);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, TIMEOUT);
 
     if (proxy)
     {
-        /* curl_easy_setopt(curl, CURLOPT_PROXY, proxy); */
+        curl_easy_setopt(curl, CURLOPT_PROXY, proxy);
+        curl_easy_setopt(curl, CURLOPT_HTTPPROXYTUNNEL, 1L); 
         /* curl_easy_setopt(easyhandle, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS4);  */
     }
 
@@ -89,7 +98,7 @@ static void *pull_one_url(void *proxy)
     curl_easy_cleanup(curl);
 
     /* Test the returned information */
-    if (strncmp (chunk.data, TESTDATA, strlen(TESTDATA)) == 0)
+    if (chunk.data && (strncmp (chunk.data, TESTDATA, strlen(TESTDATA)) == 0))
     {
         pthread_mutex_lock (&output_mutex);
         if ((f = fopen (OUTPUTFILE, "a")))
