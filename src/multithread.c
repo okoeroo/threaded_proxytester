@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <curl/curl.h>
 
-#define MAXTHREADS 20
+#define MAXTHREADS 10
 
 #define TIMEOUT   5
 #define INPUTFILE "/Users/okoeroo/dvl/scripts/hacking/gaming_games/working.proxies"
@@ -59,11 +59,13 @@ static void *pull_one_url(void *proxy)
     CURL *curl;
     buffer_t chunk;
     FILE * f = NULL;
+#if 1
     sigset_t sigset;
 
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGALRM);
     pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+#endif
 
     chunk.data = NULL; /* we expect realloc(NULL, size) to work */ 
     chunk.size = 0;    /* no data at this point */ 
@@ -134,6 +136,7 @@ int main(int argc, char **argv)
 {
     pthread_t tid[MAXTHREADS*100];
     int i = 0;
+    int j = 0;
     int error;
     char * buf = NULL;
     int bufsize = 0;
@@ -178,19 +181,19 @@ int main(int argc, char **argv)
             {
                 fprintf(stderr, "Thread %d, gets via %s\n", i, proxy);
                 active_threads++;
-                i++;
             }
+            i++;
 
             if (active_threads < MAXTHREADS)
                 continue;
             else
             {
-                active_threads = 0;
                 /* now wait for all threads to terminate */
-                for(i=0; i< MAXTHREADS; i++) 
+                for(j=0; j< MAXTHREADS; j++) 
                 {
-                    error = pthread_join(tid[i], NULL);
-                    fprintf(stderr, "Thread %d terminated\n", i);
+                    error = pthread_join(tid[j], NULL);
+                    active_threads--;
+                    fprintf(stderr, "Thread %d terminated\n", j);
                 }
             }
         }
