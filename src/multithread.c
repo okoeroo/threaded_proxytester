@@ -1,15 +1,3 @@
-/*****************************************************************************
- *                                  _   _ ____  _
- *  Project                     ___| | | |  _ \| |
- *                             / __| | | | |_) | |
- *                            | (__| |_| |  _ <| |___
- *                             \___|\___/|_| \_\_____|
- *
- */
-
-/* A multi-threaded example that uses pthreads extensively to fetch
- * X remote files at once */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
