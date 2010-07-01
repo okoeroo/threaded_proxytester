@@ -11,9 +11,7 @@ AM_CFLAGS = \
             -Wpointer-arith -Wno-long-long \
             -Wcomment -Wmissing-include-dirs \
             -O3 -Wuninitialized \
-            -I../ \
-            -Icommon \
-            -Iproto
+            -I../
 
 
 

@@ -12,11 +12,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <curl/curl.h>
 
 #define MAXTHREADS 20
 
+#define INPUTFILE "/Users/okoeroo/dvl/scripts/hacking/gaming_games/working.proxies"
 #define OUTPUTFILE "my_tested_proxies.txt"
 #define TESTURL "http://www.nikhef.nl/~okoeroo/testfile"
 #define TESTDATA "foobar2010"
@@ -87,9 +89,9 @@ static void *pull_one_url(void *proxy)
     if (strncmp (chunk.data, TESTDATA, strlen(TESTDATA)) == 0)
     {
         pthread_mutex_lock (&output_mutex);
-        if (f = fopen (OUTPUTFILE, "a"))
+        if ((f = fopen (OUTPUTFILE, "a")))
         {
-            fprintf (f, "%s\n", proxy);
+            fprintf (f, "%s\n", (char *)proxy);
             fclose(f);
         }
         pthread_mutex_unlock (&output_mutex);
@@ -111,35 +113,42 @@ int main(int argc, char **argv)
     int i;
     int error;
     char * proxy = NULL;
+    FILE * in = NULL;
 
 
     printf ("Settings:\n");
-    printf ("\tthreads:  %d\n", MAXTHREADS);
-    printf ("\ttest URL: %s\n", TESTURL);
+    printf ("\tthreads:      %d\n", MAXTHREADS);
+    printf ("\ttest URL:     %s\n", TESTURL);
+    printf ("\tUser Agent:   %s\n", USERAGENT);
+    printf ("\tInput file:   %s\n", INPUTFILE);
+    printf ("\tOutput file:  %s\n", OUTPUTFILE);
+    printf ("\n");
 
     pthread_mutex_init (&output_mutex, NULL);
 
-
-    /* Must initialize libcurl before any threads are started */
-    curl_global_init(CURL_GLOBAL_ALL);
-
-    for(i=0; i< MAXTHREADS; i++) 
+    if (in = fopen (INPUTFILE, "r"))
     {
-        error = pthread_create(&tid[i],
-                NULL, /* default attributes please */
-                pull_one_url,
-                (void *)proxy);
-        if(0 != error)
-            fprintf(stderr, "Couldn't run thread number %d, errno %d\n", i, error);
-        else
-            fprintf(stderr, "Thread %d, gets via %s\n", i, proxy);
-    }
+        /* Must initialize libcurl before any threads are started */
+        curl_global_init(CURL_GLOBAL_ALL);
 
-    /* now wait for all threads to terminate */
-    for(i=0; i< MAXTHREADS; i++) 
-    {
-        error = pthread_join(tid[i], NULL);
-        fprintf(stderr, "Thread %d terminated\n", i);
+        for(i=0; i< MAXTHREADS; i++) 
+        {
+            error = pthread_create(&tid[i],
+                    NULL, /* default attributes please */
+                    pull_one_url,
+                    (void *)proxy);
+            if(0 != error)
+                fprintf(stderr, "Couldn't run thread number %d, errno %d\n", i, error);
+            else
+                fprintf(stderr, "Thread %d, gets via %s\n", i, proxy);
+        }
+
+        /* now wait for all threads to terminate */
+        for(i=0; i< MAXTHREADS; i++) 
+        {
+            error = pthread_join(tid[i], NULL);
+            fprintf(stderr, "Thread %d terminated\n", i);
+        }
     }
 
     return 0;
